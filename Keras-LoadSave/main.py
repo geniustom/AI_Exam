@@ -2,16 +2,25 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-MODEL_FILE='m.h5' #HDF5, pip install h5py
+MODEL_FILE='m.h5'
 
 				
-def save_model(model,file_name):
-	model.save(file_name)   # HDF5 file, you have to pip3 install h5py if don't have it
+def save_model(model,file_name,json_type=False):
+	if json_type: 
+		model.to_json()
+	else: 
+		model.save(file_name)   
+	# HDF5 file, you have to pip3 install h5py if don't have it
 
 
-def load_model(file_name):
+def load_model(file_name,json_type=False):
 	from keras.models import load_model
-	model = load_model(file_name)
+	from keras.models import model_from_json
+	if json_type: 
+		model = model_from_json(json_string)
+	else: 
+		model = load_model(file_name)  
+	
 	return model
 
 
