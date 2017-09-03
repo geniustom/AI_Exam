@@ -1,16 +1,24 @@
 from __future__ import print_function
 import keras
 
-batch_size = 128
+batch_size = 500
 epochs = 10
 num_classes = 10
 img_rows, img_cols = 28, 28 # input image dimensions
 
+MODEL_FILE='m.h5'
+
+				
+def save_model(model,file_name,json_type=False):
+	if json_type: 
+		model.to_json()
+	else: 
+		model.save(file_name)   
+		
 def get_mnist_data():
 	from keras.datasets import mnist
 	
 	(x_train, y_train), (x_test, y_test) = mnist.load_data()
-	#input_shape = (img_rows, img_cols, 1)
 	
 	#把 類別標籤 轉換成 類別矩陣
 	y_train = keras.utils.to_categorical(y_train, num_classes)
@@ -24,7 +32,7 @@ def get_mnist_data():
 	
 def cnn_model():
 	from keras.models import Sequential
-	from keras.layers import Reshape,Conv2D, MaxPooling2D,Dense, Dropout, Flatten
+	from keras.layers import Reshape,Dense,Conv2D, MaxPooling2D, Dropout, Flatten
 	# convert class vectors to binary class matrices
 
 	model = Sequential([
@@ -59,15 +67,9 @@ def dnn_model():
 	
 	
 def model_train(model,x_train,y_train):
-	model.compile(loss=keras.losses.categorical_crossentropy,
-				  optimizer=keras.optimizers.Adadelta(),
-				  metrics=['accuracy'])
+	model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy'])
+	model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, verbose=1)
 	
-	model.fit(x_train, y_train,
-	    batch_size=batch_size,
-	    epochs=epochs,
-	    verbose=1
-    )
 	
 def model_test(model,x_test, y_test):
 	score = model.evaluate(x_test, y_test, verbose=1)
@@ -78,13 +80,14 @@ def model_test(model,x_test, y_test):
 if __name__ == '__main__':
 	x_train,y_train,x_test,y_test=get_mnist_data()
 	
-	model=dnn_model()
-	print(model.summary())
+	model=cnn_model()
+	print(model.summary(),'\n')
 	print('Training ------------')
 	model_train(model,x_train,y_train)
 	print('Testing ------------')
 	score=model_test(model,x_test,y_test)
 	print('Test loss:', score[0],'Test accuracy:', score[1])
+	save_model(model,MODEL_FILE)
 
 	
 	
