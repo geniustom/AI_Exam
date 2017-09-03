@@ -1,74 +1,105 @@
-import numpy as np
-np.random.seed(1337)  # for reproducibility
-from keras.datasets import mnist
-from keras.utils import np_utils
-from keras.models import Sequential
-from keras.layers import Dense, Activation, Convolution2D, MaxPooling2D, Flatten
-from keras.optimizers import Adam
+from __future__ import print_function
+import keras
 
-# download the mnist to the path '~/.keras/datasets/' if it is the first time to be called
-# X shape (60,000 28x28), y shape (10,000, )
-(X_train, y_train), (X_test, y_test) = mnist.load_data()
+batch_size = 128
+epochs = 10
+num_classes = 10
+img_rows, img_cols = 28, 28 # input image dimensions
 
-# data pre-processing
-X_train = X_train.reshape(-1, 1,28, 28)/255.
-X_test = X_test.reshape(-1, 1,28, 28)/255.
-y_train = np_utils.to_categorical(y_train, num_classes=10)
-y_test = np_utils.to_categorical(y_test, num_classes=10)
+def get_mnist_data():
+	from keras.datasets import mnist
+	
+	(x_train, y_train), (x_test, y_test) = mnist.load_data()
+	#input_shape = (img_rows, img_cols, 1)
+	
+	#把 類別標籤 轉換成 類別矩陣
+	y_train = keras.utils.to_categorical(y_train, num_classes)
+	y_test = keras.utils.to_categorical(y_test, num_classes)
+	#正規化成 0~1 收斂速度變快，準確度變高
+	x_train = x_train / 255.
+	x_test = x_test / 255.
+	
+	return x_train,y_train,x_test,y_test
 
-# Another way to build your CNN
-model = Sequential()
+	
+def cnn_model():
+	from keras.models import Sequential
+	from keras.layers import Reshape,Conv2D, MaxPooling2D,Dense, Dropout, Flatten
+	# convert class vectors to binary class matrices
 
-# Conv layer 1 output shape (32, 28, 28)
-model.add(Convolution2D(
-    batch_input_shape=(64, 1, 28, 28),
-    filters=32,
-    kernel_size=5,
-    strides=1,
-    padding='same',     # Padding method
-    data_format='channels_first',
-))
-model.add(Activation('relu'))
+	model = Sequential([
+		Reshape((28,28,1), input_shape=(28,28)),
+		Conv2D(32, (3, 3), activation='relu'),
+		Conv2D(64, (3, 3), activation='relu'),
+		MaxPooling2D(pool_size=(2, 2)),
+		Dropout(0.25),
+		Flatten(),
+		Dense(128, activation='relu'),
+		Dropout(0.5),
+		Dense(num_classes, activation='softmax')
+	])
+	
+	return model
+	
 
-# Pooling layer 1 (max pooling) output shape (32, 14, 14)
-model.add(MaxPooling2D(
-    pool_size=2,
-    strides=2,
-    padding='same',    # Padding method
-    data_format='channels_first',
-))
+def dnn_model():
+	from keras.models import Sequential
+	from keras.layers import Reshape,Dense, Activation,Dropout
+	model = Sequential([
+		Reshape((784,), input_shape=(28,28)),
+		Dense(32),
+		Dropout(0.25),
+		Dense(64),
+		Activation('relu'),
+		Dense(10),
+		Activation('softmax'),
+	])
+	
+	return model
+	
+	
+def model_train(model,x_train,y_train):
+	model.compile(loss=keras.losses.categorical_crossentropy,
+				  optimizer=keras.optimizers.Adadelta(),
+				  metrics=['accuracy'])
+	
+	model.fit(x_train, y_train,
+	    batch_size=batch_size,
+	    epochs=epochs,
+	    verbose=1
+    )
+	
+def model_test(model,x_test, y_test):
+	score = model.evaluate(x_test, y_test, verbose=1)
+	return score	
+	
 
-# Conv layer 2 output shape (64, 14, 14)
-model.add(Convolution2D(64, 5, strides=1, padding='same', data_format='channels_first'))
-model.add(Activation('relu'))
+	
+if __name__ == '__main__':
+	x_train,y_train,x_test,y_test=get_mnist_data()
+	
+	model=dnn_model()
+	print(model.summary())
+	print('Training ------------')
+	model_train(model,x_train,y_train)
+	print('Testing ------------')
+	score=model_test(model,x_test,y_test)
+	print('Test loss:', score[0],'Test accuracy:', score[1])
 
-# Pooling layer 2 (max pooling) output shape (64, 7, 7)
-model.add(MaxPooling2D(2, 2, 'same', data_format='channels_first'))
+	
+	
+	
+	
+'''	
+	x_train = x_train.reshape(x_train.shape[0], img_rows, img_cols, 1)
+	x_test = x_test.reshape(x_test.shape[0], img_rows, img_cols, 1)
+	
+	y_train = keras.utils.to_categorical(y_train, num_classes)
+	y_test = keras.utils.to_categorical(y_test, num_classes)
 
-# Fully connected layer 1 input shape (64 * 7 * 7) = (3136), output shape (1024)
-model.add(Flatten())
-model.add(Dense(1024))
-model.add(Activation('relu'))
-
-# Fully connected layer 2 to shape (10) for 10 classes
-model.add(Dense(10))
-model.add(Activation('softmax'))
-
-# Another way to define your optimizer
-adam = Adam(lr=1e-4)
-
-# We add metrics to get more results you want to see
-model.compile(optimizer=adam,
-              loss='categorical_crossentropy',
-              metrics=['accuracy'])
-
-print('Training ------------')
-# Another way to train the model
-model.fit(X_train, y_train, epochs=1, batch_size=64,)
-
-print('\nTesting ------------')
-# Evaluate the model with the metrics we defined earlier
-loss, accuracy = model.evaluate(X_test, y_test)
-
-print('\ntest loss: ', loss)
-print('\ntest accuracy: ', accuracy)
+	# data pre-processing
+	x_train = x_train.reshape(x_train.shape[0], -1) / 255.   # normalize
+	x_test = x_test.reshape(x_test.shape[0], -1) / 255.      # normalize
+	y_train = keras.utils.to_categorical(y_train, num_classes=10)
+	y_test = keras.utils.to_categorical(y_test, num_classes=10)
+'''	
